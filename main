@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract MedicalRecords {
+    // Structure to represent a patient's medical record
+    struct MedicalRecord {
+        address patientAddress;
+        string encryptedData;
+        bool isApproved;
+    }
+
+    // Mapping to store medical records using a unique record ID
+    mapping(uint256 => MedicalRecord) public medicalRecords;
+
+    // Event to emit when a new medical record is created
+    event MedicalRecordCreated(uint256 indexed recordId, address indexed patientAddress, string encryptedData);
+
+    // Modifier to check if the caller is the patient or an approved entity
+    modifier onlyPatientOrApproved(uint256 recordId) {
+        require(
+            msg.sender == medicalRecords[recordId].patientAddress ||
+            medicalRecords[recordId].isApproved == true,
+            "Unauthorized access"
+        );
+        _;
+    }
+
+    // Function to create a new medical record
+    function createMedicalRecord(uint256 recordId, string memory encryptedData) external {
+        require(bytes(encryptedData).length > 0, "Data cannot be empty");
+
+        medicalRecords[recordId] = MedicalRecord({
+            patientAddress: msg.sender,
+            encryptedData: encryptedData,
+            isApproved: false
+        });
+
+        emit MedicalRecordCreated(recordId, msg.sender, encryptedData);
+    }
+
+    // Function to grant access to a medical record
+    function grantAccess(uint256 recordId) external onlyPatientOrApproved(recordId) {
+        medicalRecords[recordId].isApproved = true;
+    }
+
+    // Function to retrieve a medical record
+    function getMedicalRecord(uint256 recordId) external view onlyPatientOrApproved(recordId)
+        returns (address patientAddress, string memory encryptedData, bool isApproved)
+    {
+        MedicalRecord storage record = medicalRecords[recordId];
+        return (record.patientAddress, record.encryptedData, record.isApproved);
+    }
+}
+#Register Property:
+Input: Property ID = 1, Location = "123 Main St", Price = 100000
+Action: Call registerProperty(1, "123 Main St", 100000)
+Expected Output: Property with ID 1 registered with the provided details.
+Retrieve Property Details:
+Input: Property ID = 1
+Action: Call getPropertyDetails(1)
+Expected Output: Property details for ID 1 should include owner, location, price, and sale status.
+Update Property Price:
+Input: Property ID = 1, New Price = 120000
+Action: Call updatePrice(1, 120000)
+Expected Output: Property with ID 1 should have its price updated to 120000.
+Mark Property as Sold:
+Input: Property ID = 1
+Action: Call markAsSold(1)
+Expected Output: Property with ID 1 should be marked as sold.
+Access Control:
+Input: Property ID = 1, Different Address Trying to Update
+Action: Call updatePrice(1, 130000) from an address different from the property owner
+Expected Output: Revert with "Only property owner can call this function" error message.
+Property Not Existing:
+Input: Non-Existent Property ID = 2
+Action: Call getPropertyDetails(2)
+Expected Output: Return empty details or revert with an appropriate error message indicating that the property does not exist.
+Register Existing Property ID:
+Input: Property ID = 1, Location = "456 Elm St", Price = 150000 (attempt to register an existing ID)
+Action: Call registerProperty(1, "456 Elm St", 150000)
+Expected Output: Revert with "Property ID already exists" error message.
+Invalid Property ID:
+Input: Property ID = 0 (Invalid ID)
+Action: Call any function with an invalid property ID
+Expected Output: Revert with an appropriate error message indicating an invalid property ID.
